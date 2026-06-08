@@ -1,30 +1,53 @@
-import os 
-import re 
-import sys 
-import requests 
+'''
+V2版-目前有效
+使用移动端接口修复每日自动签到，移除原有的"登录验证"，参数有效期未知
 
-cookie_list = os.getenv("COOKIE_QUARK").split('\n|&&')
+V1版-已失效
+受大佬 @Cp0204 的仓库项目启发改编
+源码来自 GitHub 仓库：https://github.com/Cp0204/quark-auto-save
+提取"登录验证""签到""领取"方法封装到下文中的"Quark"类中
 
-# 替代 notify 功能
-def send(title, message):
-    print(f"{title}: {message}")
+Description:
+抓包流程：
+    【手机端】
+    ①打开抓包，手机端访问抽奖页
+    ②找到url为 https://drive-m.quark.cn/1/clouddrive/act/growth/reward 的请求信息
+    ③复制整段url，该链接后面必须要有参数: kps sign vcode，粘贴到环境变量
+    环境变量名为 COOKIE_QUARK 多账户用 回车 或 && 分开
+    user字段是用户名 (可是随意填写，多账户方便区分)
+    例如: user=张三; url=https://drive-m.quark.cn/1/clouddrive/act/growth/reward?xxxxxx=xxxxxx&kps=abcdefg&sign=hijklmn&vcode=111111111;
+    旧版环境变量格式也兼容，例如: user=张三; kps=abcdefg; sign=hijklmn; vcode=111111111;
+'''
+import os
+import re
+import sys
 
-# 获取环境变量 
-def get_env(): 
-    # 判断 COOKIE_QUARK是否存在于环境变量 
-    if "COOKIE_QUARK" in os.environ: 
-        # 读取系统变量以 \n 或 && 分割变量 
-        cookie_list = re.split('\n|&&', os.environ.get('COOKIE_QUARK')) 
-    else: 
-        # 标准日志输出 
-        print('❌未添加COOKIE_QUARK变量') 
-        send('夸克自动签到', '❌未添加COOKIE_QUARK变量') 
-        # 脚本退出 
-        sys.exit(0) 
+import requests
 
-    return cookie_list 
+# 测试用环境变量
+# os.environ['COOKIE_QUARK'] = ''
 
-# 其他代码...
+try:  # 异常捕捉
+    from utils.notify import send  # 导入消息通知模块
+except Exception as err:  # 异常捕捉
+    print('%s\n❌加载通知服务失败~' % err)
+
+
+# 获取环境变量
+def get_env():
+    # 判断 COOKIE_QUARK是否存在于环境变量
+    if "COOKIE_QUARK" in os.environ:
+        # 读取系统变量以 \n 或 && 分割变量
+        cookie_list = re.split('\n|&&', os.environ.get('COOKIE_QUARK'))
+    else:
+        # 标准日志输出
+        print('❌未添加COOKIE_QUARK变量')
+        send('夸克自动签到', '❌未添加COOKIE_QUARK变量')
+        # 脚本退出
+        sys.exit(0)
+
+    return cookie_list
+
 
 class Quark:
     '''
@@ -139,10 +162,34 @@ class Quark:
                 else:
                     log += f"❌ 签到异常: {sign_return}\n"
         else:
-            # log += f"❌ 签到异常: 获取成长信息失败\n"
-            raise Exception("❌ 签到异常: 获取成长信息失败")  # 适用于单账号情形，当 cookie 值失效后直接报错，方便通过 github action 的操作系统来进行提醒 如果你使用的是多账号签到的话，不要跟进此更新
+            log += f"❌ 签到异常: 获取成长信息失败\n"
 
         return log
+
+
+def extract_params(url):
+    '''
+    从URL中提取所需的参数
+    :param url: 包含参数的URL
+    :return: 返回一个字典，包含所需的参数
+    '''
+    # 提取URL中的查询参数部分（?后面的内容）
+    query_start = url.find('?')
+    query_string = url[query_start + 1:] if query_start != -1 else ''
+
+    # 解析查询参数
+    params = {}
+    for param in query_string.split('&'):
+        if '=' in param:
+            key, value = param.split('=', 1)
+            params[key] = value
+
+    # 返回所需的参数
+    return {
+        'kps': params.get('kps', ''),
+        'sign': params.get('sign', ''),
+        'vcode': params.get('vcode', '')
+    }
 
 
 def main():
@@ -163,7 +210,13 @@ def main():
         for a in cookie_quark[i].replace(" ", "").split(';'):
             if not a == '':
                 user_data.update({a[0:a.index('=')]: a[a.index('=') + 1:]})
+        
+        # 从url参数中提取额外信息
+        if 'url' in user_data:
+            url_params = extract_params(user_data['url'])
+            user_data.update(url_params)
         # print(user_data)
+        
         # 开始任务
         log = f"🙍🏻‍♂️ 第{i + 1}个账号"
         msg += log
@@ -173,7 +226,7 @@ def main():
 
         i += 1
 
-    # print(msg)
+    print(msg)
 
     try:
         send('夸克自动签到', msg)
