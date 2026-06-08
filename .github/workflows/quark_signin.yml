@@ -16,11 +16,11 @@ jobs:
       skip: ${{ steps.check.outputs.skip }}
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 恢复签到成功记录缓存
         id: cache-success-restore
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           ACTIONS_CACHE_FORCE_V2: true
         with:
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 随机延迟（早上）
         if: github.event.schedule == '0 1 * * *'
@@ -90,7 +90,7 @@ jobs:
 
       - name: 保存成功记录到缓存
         if: success()
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           ACTIONS_CACHE_FORCE_V2: true
         with:
