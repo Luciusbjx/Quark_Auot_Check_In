@@ -1,5 +1,8 @@
 name: Quark签到
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   schedule:
     - cron: '0 1 * * *'   # 北京时间 09:00 (UTC+8 -> UTC+1)
